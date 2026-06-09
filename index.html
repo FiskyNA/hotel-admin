@@ -131,10 +131,6 @@
                 <div class="card">
                     <div class="search-bar">
                         <input type="text" id="guestSearch" placeholder="Search guests..." oninput="filterGuests()">
-                        <select id="guestFilter" onchange="filterGuests()">
-                            <option value="never-booked">Never Booked</option>
-                            <option value="all">All Guests</option>
-                        </select>
                     </div>
                     <div class="table-wrapper">
                         <table class="table">
@@ -143,7 +139,6 @@
                                     <th>Name</th>
                                     <th>Phone</th>
                                     <th>Serial No</th>
-                                    <th>Bookings</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -293,6 +288,13 @@
                 <input type="hidden" id="bookingId">
                 <div class="form-group">
                     <label>Guest(s)</label>
+                    <div class="booking-guest-filter">
+                        <input type="text" id="bookingGuestSearch" placeholder="Search guests..." oninput="populateGuestCheckboxes()">
+                        <select id="bookingGuestFilter" onchange="populateGuestCheckboxes()">
+                            <option value="never-booked">Never Booked</option>
+                            <option value="all">All Guests</option>
+                        </select>
+                    </div>
                     <div class="guest-checkbox-list" id="bookingGuestCheckboxes"></div>
                 </div>
                 <div class="form-row">

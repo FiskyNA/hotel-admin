@@ -120,48 +120,30 @@ function renderRecentBookings() {
 
 function renderGuests() {
     const guests = cachedGuests;
-    const bookings = cachedBookings;
     const search = document.getElementById('guestSearch').value.toLowerCase();
-    const filter = document.getElementById('guestFilter').value;
-
-    const guestBookingCount = {};
-    bookings.forEach(b => {
-        const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
-        guestIds.forEach(gid => {
-            guestBookingCount[gid] = (guestBookingCount[gid] || 0) + 1;
-        });
-    });
-
-    let filtered = guests.filter(g => {
-        const matchesSearch = g.name.toLowerCase().includes(search) ||
-            g.phone.includes(search) ||
-            (g.serialNo && g.serialNo.toLowerCase().includes(search));
-        if (!matchesSearch) return false;
-        if (filter === 'never-booked') return !guestBookingCount[g.id];
-        return true;
-    });
+    const filtered = guests.filter(g =>
+        g.name.toLowerCase().includes(search) ||
+        g.phone.includes(search) ||
+        (g.serialNo && g.serialNo.toLowerCase().includes(search))
+    );
 
     const tbody = document.getElementById('guestsBody');
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:20px;">No guests found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:20px;">No guests found</td></tr>';
         return;
     }
 
-    tbody.innerHTML = filtered.map(g => {
-        const count = guestBookingCount[g.id] || 0;
-        return `
-            <tr>
-                <td><span class="clickable-name" onclick="openGuestDetailModal('${g.id}')">${escapeHtml(g.name)}</span></td>
-                <td>${escapeHtml(g.phone)}</td>
-                <td>${escapeHtml(g.serialNo || '-')}</td>
-                <td>${count > 0 ? count : '-'}</td>
-                <td>
-                    <button class="btn-icon" onclick="openGuestModal('${g.id}')" title="Edit">&#9998;</button>
-                    <button class="btn-icon" onclick="deleteGuest('${g.id}')" title="Delete">&#128465;</button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    tbody.innerHTML = filtered.map(g => `
+        <tr>
+            <td><span class="clickable-name" onclick="openGuestDetailModal('${g.id}')">${escapeHtml(g.name)}</span></td>
+            <td>${escapeHtml(g.phone)}</td>
+            <td>${escapeHtml(g.serialNo || '-')}</td>
+            <td>
+                <button class="btn-icon" onclick="openGuestModal('${g.id}')" title="Edit">&#9998;</button>
+                <button class="btn-icon" onclick="deleteGuest('${g.id}')" title="Delete">&#128465;</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
 function filterGuests() {
@@ -487,6 +469,8 @@ async function openBookingModal(id) {
     document.getElementById('bookingId').value = '';
     document.getElementById('bookingPrice').value = '';
     document.getElementById('bookingTotal').value = '';
+    document.getElementById('bookingGuestSearch').value = '';
+    document.getElementById('bookingGuestFilter').value = 'never-booked';
 
     populateGuestCheckboxes([]);
     populateRoomDropdown();
@@ -497,6 +481,7 @@ async function openBookingModal(id) {
             title.textContent = 'Edit Booking';
             document.getElementById('bookingId').value = booking.id;
             const guestIds = booking.guestIds || (booking.guestId ? [booking.guestId] : []);
+            document.getElementById('bookingGuestFilter').value = 'all';
             populateGuestCheckboxes(guestIds);
             document.getElementById('bookingRoom').value = booking.roomId;
             document.getElementById('bookingCheckIn').value = booking.checkIn;
@@ -517,12 +502,34 @@ function closeBookingModal() {
 
 function populateGuestCheckboxes(selectedIds) {
     const container = document.getElementById('bookingGuestCheckboxes');
-    container.innerHTML = cachedGuests.map(g => `
+    const searchInput = document.getElementById('bookingGuestSearch');
+    const filterSelect = document.getElementById('bookingGuestFilter');
+    const search = searchInput ? searchInput.value.toLowerCase() : '';
+    const filter = filterSelect ? filterSelect.value : 'never-booked';
+
+    const guestIdsWithBookings = new Set();
+    cachedBookings.forEach(b => {
+        const ids = b.guestIds || (b.guestId ? [b.guestId] : []);
+        ids.forEach(id => guestIdsWithBookings.add(id));
+    });
+
+    const filtered = cachedGuests.filter(g => {
+        const matchesSearch = g.name.toLowerCase().includes(search) || g.phone.includes(search);
+        if (!matchesSearch) return false;
+        if (filter === 'never-booked') return !guestIdsWithBookings.has(g.id);
+        return true;
+    });
+
+    container.innerHTML = filtered.map(g => `
         <label class="guest-checkbox">
             <input type="checkbox" value="${g.id}" ${selectedIds.includes(g.id) ? 'checked' : ''}>
             <span>${escapeHtml(g.name)}</span>
         </label>
     `).join('');
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-secondary);font-size:13px;">No guests found</div>';
+    }
 }
 
 function getSelectedGuestIds() {

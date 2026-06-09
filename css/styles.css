@@ -791,6 +791,34 @@ body {
     accent-color: var(--primary);
 }
 
+/* Booking Guest Filter */
+.booking-guest-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.booking-guest-filter input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+}
+
+.booking-guest-filter input:focus {
+    border-color: var(--primary);
+}
+
+.booking-guest-filter select {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .stats-grid {
