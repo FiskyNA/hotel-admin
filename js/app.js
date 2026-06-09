@@ -52,26 +52,35 @@ function renderBalance(total, advance) {
 
 async function clearAllData() {
     if (await showConfirmDialog('Clear all guests, bookings, and checkouts?')) {
-        const batch1 = db.batch();
-        cachedGuests.forEach(g => batch1.delete(db.collection('guests').doc(g.id)));
-        await batch1.commit();
+        try {
+            const deletions = [];
 
-        const batch2 = db.batch();
-        cachedBookings.forEach(b => batch2.delete(db.collection('bookings').doc(b.id)));
-        await batch2.commit();
+            cachedGuests.forEach(g => {
+                deletions.push(db.collection('guests').doc(g.id).delete());
+            });
 
-        const batch3 = db.batch();
-        cachedCheckouts.forEach(c => batch3.delete(db.collection('checkouts').doc(c.id)));
-        await batch3.commit();
+            cachedBookings.forEach(b => {
+                deletions.push(db.collection('bookings').doc(b.id).delete());
+            });
 
-        cachedGuests = [];
-        cachedBookings = [];
-        cachedCheckouts = [];
-        await updateRoomStatusesFromBookings();
-        renderDashboard();
-        renderGuests();
-        renderBookings();
-        showToast('All test data cleared');
+            cachedCheckouts.forEach(c => {
+                deletions.push(db.collection('checkouts').doc(c.id).delete());
+            });
+
+            await Promise.all(deletions);
+
+            cachedGuests = [];
+            cachedBookings = [];
+            cachedCheckouts = [];
+            await updateRoomStatusesFromBookings();
+            renderDashboard();
+            renderGuests();
+            renderBookings();
+            showToast('All test data cleared');
+        } catch (err) {
+            console.error('Clear error:', err);
+            showToast('Error clearing data', 'error');
+        }
     }
 }
 
