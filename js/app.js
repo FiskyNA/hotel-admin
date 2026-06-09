@@ -363,12 +363,6 @@ function handleSignatureUpload(event) {
 async function saveGuest(event) {
     event.preventDefault();
 
-    const phone = document.getElementById('guestPhone').value.trim();
-    if (!/^[6-9]\d{9}$/.test(phone)) {
-        alert('Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
-        return;
-    }
-
     const id = document.getElementById('guestId').value || generateId();
     const guest = {
         id: id,
