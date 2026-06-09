@@ -7,15 +7,10 @@ let currentRoomId = null;
 document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
     setupSidebarToggle();
-    try {
-        await initRooms();
-        await loadAllData();
-        await updateRoomStatusesFromBookings();
-        renderDashboard();
-    } catch (err) {
-        console.error('Initialization error:', err);
-        alert('Error loading data: ' + err.message);
-    }
+    await initRooms();
+    await updateRoomStatusesFromBookings();
+    await loadAllData();
+    renderDashboard();
 });
 
 async function loadAllData() {

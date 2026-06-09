@@ -136,13 +136,10 @@ async function isRoomAvailable(roomId, checkIn, checkOut, excludeBookingId) {
 }
 
 async function updateRoomStatusesFromBookings() {
-    if (cachedRooms.length === 0) return;
-    
     const today = getToday();
     const bookings = cachedBookings.length > 0 ? cachedBookings : await getBookings();
 
     const batch = db.batch();
-    let hasChanges = false;
     cachedRooms.forEach(room => {
         const activeBooking = bookings.find(b =>
             b.roomId === room.id &&
@@ -164,11 +161,8 @@ async function updateRoomStatusesFromBookings() {
         if (room.status !== newStatus) {
             room.status = newStatus;
             batch.update(db.collection('rooms').doc(room.id), { status: newStatus });
-            hasChanges = true;
         }
     });
 
-    if (hasChanges) {
-        await batch.commit();
-    }
+    await batch.commit();
 }
