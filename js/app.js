@@ -413,7 +413,9 @@ async function saveBooking(event) {
     };
 
     await saveBookingData(booking);
+    await updateRoomStatusesFromBookings();
     closeBookingModal();
+    renderRoomGrid();
     renderBookings();
     renderDashboard();
 }
@@ -421,6 +423,8 @@ async function saveBooking(event) {
 async function deleteBooking(id) {
     if (confirm('Are you sure you want to delete this booking?')) {
         await deleteBookingData(id);
+        await updateRoomStatusesFromBookings();
+        renderRoomGrid();
         renderBookings();
         renderDashboard();
     }
