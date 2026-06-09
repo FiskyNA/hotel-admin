@@ -4,6 +4,30 @@ let currentGuestSignature = null;
 let currentDetailGuestId = null;
 let currentRoomId = null;
 let currentBookingFilter = 'all';
+let draftTimers = {};
+let isSaving = false;
+
+function saveDraft(key, data) {
+    try {
+        localStorage.setItem('draft_' + key, JSON.stringify(data));
+    } catch (e) { }
+}
+
+function loadDraft(key) {
+    try {
+        const raw = localStorage.getItem('draft_' + key);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+}
+
+function clearDraft(key) {
+    localStorage.removeItem('draft_' + key);
+}
+
+function debounceDraft(key, getFormData, delay = 500) {
+    if (draftTimers[key]) clearTimeout(draftTimers[key]);
+    draftTimers[key] = setTimeout(() => saveDraft(key, getFormData()), delay);
+}
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
@@ -271,7 +295,7 @@ function renderBookings() {
 
     const tbody = document.getElementById('bookingsBody');
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings found</td></tr>';
         return;
     }
 
@@ -282,6 +306,14 @@ function renderBookings() {
             return g ? g.name : 'Unknown';
         });
         const room = rooms.find(r => r.id === b.roomId);
+        const status = b.status || 'Confirmed';
+        const isCheckedOut = status === 'Checked-Out';
+        const statusOptions = ['Confirmed', 'Checked-In', 'Checked-Out'];
+        const statusSelect = isCheckedOut
+            ? '<span class="status-badge checked-out">Checked-Out</span>'
+            : `<select class="booking-status-select" onchange="changeBookingStatus('${b.id}', this.value)">
+                ${statusOptions.map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${s}</option>`).join('')}
+               </select>`;
         return `
             <tr>
                 <td><strong>${escapeHtml(b.reference || '-')}</strong></td>
@@ -291,6 +323,7 @@ function renderBookings() {
                 <td>${formatDisplayDate(b.checkOut)}${b.checkOutTime ? ', ' + formatTime12(b.checkOutTime) : ''}</td>
                 <td>${b.totalPrice > 0 ? 'Rs. ' + b.totalPrice.toLocaleString('en-IN') : '-'}</td>
                 <td>${b.totalPrice > 0 ? renderBalance(b.totalPrice, b.advancePaid) : '-'}</td>
+                <td>${statusSelect}</td>
                 <td>
                     <button class="btn-icon" onclick="openBookingModal('${b.id}')" title="Edit">&#9998;</button>
                     <button class="btn-icon" onclick="deleteBooking('${b.id}')" title="Delete">&#128465;</button>
@@ -302,6 +335,37 @@ function renderBookings() {
 
 function filterBookings() {
     renderBookings();
+}
+
+async function changeBookingStatus(bookingId, newStatus) {
+    await updateBookingStatus(bookingId, newStatus);
+    if (newStatus === 'Checked-Out') {
+        const booking = getBookingById(bookingId);
+        if (booking) {
+            const today = getToday();
+            const room = getRoomById(booking.roomId);
+            const checkout = {
+                id: generateId(),
+                roomId: booking.roomId,
+                roomNumber: room ? room.number : '',
+                bookingId: bookingId,
+                date: today,
+                createdAt: new Date().toISOString()
+            };
+            await saveCheckoutData(checkout);
+            await updateRoomStatus(booking.roomId, 'available');
+        }
+    } else if (newStatus === 'Checked-In') {
+        const booking = getBookingById(bookingId);
+        if (booking) {
+            await updateRoomStatus(booking.roomId, 'occupied');
+        }
+    }
+    await updateRoomStatusesFromBookings();
+    showToast('Booking status updated');
+    renderRoomGrid();
+    renderBookings();
+    renderDashboard();
 }
 
 function openGuestModal(id) {
@@ -352,9 +416,21 @@ function openGuestModal(id) {
         }
     } else {
         title.textContent = 'Add Guest';
+        clearDraft('guest');
     }
 
     modal.classList.add('active');
+
+    const guestDraftFields = ['guestName', 'guestPhone', 'guestEmail', 'guestSerialNo', 'guestNotes'];
+    guestDraftFields.forEach(f => {
+        document.getElementById(f).addEventListener('input', () => {
+            debounceDraft('guest', () => {
+                const d = {};
+                guestDraftFields.forEach(k => d[k] = document.getElementById(k).value);
+                return d;
+            });
+        });
+    });
 }
 
 function closeGuestModal() {
@@ -399,6 +475,8 @@ function handleSignatureUpload(event) {
 
 async function saveGuest(event) {
     event.preventDefault();
+    if (isSaving) return;
+    isSaving = true;
 
     const id = document.getElementById('guestId').value || generateId();
     const guest = {
@@ -416,16 +494,21 @@ async function saveGuest(event) {
 
     const isEdit = document.getElementById('guestId').value;
     await saveGuestData(guest);
+    clearDraft('guest');
     showToast(isEdit ? 'Guest updated' : 'Guest added');
+    isSaving = false;
     closeGuestModal();
     renderGuests();
     renderDashboard();
 }
 
 async function deleteGuest(id) {
+    if (isSaving) return;
     if (await showConfirmDialog('Are you sure you want to delete this guest?')) {
+        isSaving = true;
         await deleteGuestData(id);
         showToast('Guest deleted');
+        isSaving = false;
         renderGuests();
         renderDashboard();
     }
@@ -433,6 +516,8 @@ async function deleteGuest(id) {
 
 async function saveBooking(event) {
     event.preventDefault();
+    if (isSaving) return;
+    isSaving = true;
 
     const id = document.getElementById('bookingId').value || generateId();
     const roomId = document.getElementById('bookingRoom').value;
@@ -458,7 +543,9 @@ async function saveBooking(event) {
     const isEdit = document.getElementById('bookingId').value;
     await saveBookingData(booking);
     await updateRoomStatusesFromBookings();
+    clearDraft('booking');
     showToast(isEdit ? 'Booking updated' : 'Booking added');
+    isSaving = false;
     closeBookingModal();
     renderRoomGrid();
     renderBookings();
@@ -466,10 +553,13 @@ async function saveBooking(event) {
 }
 
 async function deleteBooking(id) {
+    if (isSaving) return;
     if (await showConfirmDialog('Are you sure you want to delete this booking?')) {
+        isSaving = true;
         await deleteBookingData(id);
         await updateRoomStatusesFromBookings();
         showToast('Booking deleted');
+        isSaving = false;
         renderRoomGrid();
         renderBookings();
         renderDashboard();
@@ -477,7 +567,8 @@ async function deleteBooking(id) {
 }
 
 async function saveRoomStatus() {
-    if (!currentRoomId) return;
+    if (!currentRoomId || isSaving) return;
+    isSaving = true;
     const room = getRoomById(currentRoomId);
     const oldStatus = room ? room.status : '';
     const newStatus = document.getElementById('roomStatusSelect').value;
@@ -507,6 +598,7 @@ async function saveRoomStatus() {
     await updateRoomStatus(currentRoomId, newStatus);
     showToast('Room status updated');
     closeRoomModal();
+    isSaving = false;
     renderRoomGrid();
     renderTodayActivity();
     renderDashboard();
@@ -628,9 +720,33 @@ async function openBookingModal(id) {
         }
     } else {
         title.textContent = 'Add Booking';
+        const draft = loadDraft('booking');
+        if (draft) {
+            document.getElementById('bookingRoom').value = draft.roomId || '';
+            document.getElementById('bookingCheckIn').value = draft.checkIn || '';
+            document.getElementById('bookingCheckOut').value = draft.checkOut || '';
+            document.getElementById('bookingCheckInTime').value = draft.checkInTime || '14:00';
+            document.getElementById('bookingCheckOutTime').value = draft.checkOutTime || '11:00';
+            document.getElementById('bookingPrice').value = draft.pricePerNight || '';
+            document.getElementById('bookingTotal').value = draft.totalPrice || '';
+            document.getElementById('bookingAdvance').value = draft.advancePaid || '';
+            if (draft.guestIds) populateGuestCheckboxes(draft.guestIds);
+        }
     }
 
     modal.classList.add('active');
+
+    const bookingDraftFields = ['bookingRoom', 'bookingCheckIn', 'bookingCheckOut', 'bookingCheckInTime', 'bookingCheckOutTime', 'bookingPrice', 'bookingTotal', 'bookingAdvance'];
+    bookingDraftFields.forEach(f => {
+        document.getElementById(f).addEventListener('input', () => {
+            debounceDraft('booking', () => {
+                const d = {};
+                bookingDraftFields.forEach(k => d[k] = document.getElementById(k).value);
+                d.guestIds = getSelectedGuestIds();
+                return d;
+            });
+        });
+    });
 }
 
 function closeBookingModal() {
@@ -819,7 +935,8 @@ function closeRoomModal() {
 }
 
 async function checkoutRoom() {
-    if (!currentRoomId) return;
+    if (!currentRoomId || isSaving) return;
+    isSaving = true;
     const room = getRoomById(currentRoomId);
     const roomNum = room ? room.number : '';
     const today = getToday();
@@ -851,6 +968,7 @@ async function checkoutRoom() {
     await updateRoomStatus(currentRoomId, 'available');
     showToast('Room checked out');
     closeRoomModal();
+    isSaving = false;
     renderRoomGrid();
     renderTodayActivity();
     renderBookings();
