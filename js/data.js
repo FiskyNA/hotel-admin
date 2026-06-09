@@ -21,6 +21,7 @@ const ROOMS_DATA = [
 let cachedRooms = [];
 let cachedGuests = [];
 let cachedBookings = [];
+let cachedCheckouts = [];
 
 async function initRooms() {
     const snapshot = await db.collection('rooms').get();
@@ -172,4 +173,15 @@ async function updateRoomStatusesFromBookings() {
     });
 
     await batch.commit();
+}
+
+async function getCheckouts() {
+    const snapshot = await db.collection('checkouts').get();
+    cachedCheckouts = snapshot.docs.map(doc => doc.data());
+    return cachedCheckouts;
+}
+
+async function saveCheckoutData(checkout) {
+    await db.collection('checkouts').doc(checkout.id).set(checkout);
+    cachedCheckouts.push(checkout);
 }

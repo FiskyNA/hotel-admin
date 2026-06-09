@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function loadAllData() {
-    await Promise.all([getGuests(), getBookings()]);
+    await Promise.all([getGuests(), getBookings(), getCheckouts()]);
 }
 
 function setupNavigation() {
@@ -88,7 +88,7 @@ function renderRoomGrid() {
 function renderTodayActivity() {
     const today = getToday();
     const checkins = cachedBookings.filter(b => b.checkIn === today);
-    const checkouts = cachedBookings.filter(b => b.checkOut === today);
+    const checkouts = cachedCheckouts.filter(c => c.date === today);
 
     const checkinContainer = document.getElementById('todayCheckins');
     if (checkins.length === 0) {
@@ -100,11 +100,10 @@ function renderTodayActivity() {
                 const g = cachedGuests.find(guest => guest.id === gid);
                 return g ? g.name : 'Unknown';
             });
-            const room = cachedRooms.find(r => r.id === b.roomId);
             return `
                 <div class="activity-item">
                     <span class="activity-name">${names.map(n => escapeHtml(n)).join(', ')}</span>
-                    <span class="activity-room">${room ? room.number : '-'}</span>
+                    <span class="activity-room">${escapeHtml(b.reference || '-')}</span>
                 </div>
             `;
         }).join('');
@@ -114,20 +113,12 @@ function renderTodayActivity() {
     if (checkouts.length === 0) {
         checkoutContainer.innerHTML = '<div class="activity-empty">No check-outs today</div>';
     } else {
-        checkoutContainer.innerHTML = checkouts.map(b => {
-            const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
-            const names = guestIds.map(gid => {
-                const g = cachedGuests.find(guest => guest.id === gid);
-                return g ? g.name : 'Unknown';
-            });
-            const room = cachedRooms.find(r => r.id === b.roomId);
-            return `
-                <div class="activity-item">
-                    <span class="activity-name">${names.map(n => escapeHtml(n)).join(', ')}</span>
-                    <span class="activity-room">${room ? room.number : '-'}</span>
-                </div>
-            `;
-        }).join('');
+        checkoutContainer.innerHTML = checkouts.map(c => `
+            <div class="activity-item">
+                <span class="activity-name">Room ${escapeHtml(c.roomNumber)}</span>
+                <span class="activity-room">Checked Out</span>
+            </div>
+        `).join('');
     }
 }
 
@@ -432,10 +423,32 @@ async function deleteBooking(id) {
 
 async function saveRoomStatus() {
     if (!currentRoomId) return;
-    const status = document.getElementById('roomStatusSelect').value;
-    await updateRoomStatus(currentRoomId, status);
+    const room = getRoomById(currentRoomId);
+    const oldStatus = room ? room.status : '';
+    const newStatus = document.getElementById('roomStatusSelect').value;
+
+    if (oldStatus === 'occupied' && newStatus !== 'occupied') {
+        const roomNum = room ? room.number : '';
+        const activeBooking = cachedBookings.find(b =>
+            b.roomId === currentRoomId &&
+            getToday() >= b.checkIn &&
+            getToday() <= b.checkOut
+        );
+        const checkout = {
+            id: generateId(),
+            roomId: currentRoomId,
+            roomNumber: roomNum,
+            bookingId: activeBooking ? activeBooking.id : null,
+            date: getToday(),
+            createdAt: new Date().toISOString()
+        };
+        await saveCheckoutData(checkout);
+    }
+
+    await updateRoomStatus(currentRoomId, newStatus);
     closeRoomModal();
     renderRoomGrid();
+    renderTodayActivity();
     renderDashboard();
 }
 
@@ -694,13 +707,4 @@ function openRoomModal(roomId) {
 function closeRoomModal() {
     document.getElementById('roomModal').classList.remove('active');
     currentRoomId = null;
-}
-
-async function saveRoomStatus() {
-    if (!currentRoomId) return;
-    const status = document.getElementById('roomStatusSelect').value;
-    await updateRoomStatus(currentRoomId, status);
-    closeRoomModal();
-    renderRoomGrid();
-    renderDashboard();
 }
