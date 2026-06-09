@@ -702,6 +702,42 @@ body {
     color: var(--text-secondary);
 }
 
+/* Room Booking Info */
+.room-booking-info {
+    padding: 0 20px 16px;
+}
+
+.room-booking-detail {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.room-booking-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 14px;
+}
+
+.room-booking-row:last-child {
+    border-bottom: none;
+}
+
+.room-booking-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.room-booking-guests {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
 /* Clickable Name */
 .clickable-name {
     color: var(--primary);

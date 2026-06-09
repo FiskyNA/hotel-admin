@@ -700,11 +700,84 @@ function openRoomModal(roomId) {
     document.getElementById('roomModalInfo').innerHTML = `
         <p><strong>Type:</strong> ${room.type} | <strong>Bed:</strong> ${room.bedType} | <strong>Price:</strong> ${formatCurrency(room.pricePerNight)}</p>
     `;
-    document.getElementById('roomStatusSelect').value = room.status;
+
+    if (room.status === 'occupied') {
+        document.getElementById('roomModalOccupied').style.display = 'block';
+        document.getElementById('roomModalFree').style.display = 'none';
+
+        const today = getToday();
+        const booking = cachedBookings.find(b =>
+            b.roomId === roomId &&
+            today >= b.checkIn &&
+            today <= b.checkOut
+        );
+
+        if (booking) {
+            const guestIds = booking.guestIds || (booking.guestId ? [booking.guestId] : []);
+            const guests = guestIds.map(gid => cachedGuests.find(g => g.id === gid)).filter(Boolean);
+            document.getElementById('roomBookingInfo').innerHTML = `
+                <div class="room-booking-detail">
+                    <div class="room-booking-row">
+                        <span class="room-booking-label">Guest(s)</span>
+                        <div class="room-booking-guests">
+                            ${guests.map(g => `<span class="clickable-name" onclick="closeRoomModal();openGuestDetailModal('${g.id}')">${escapeHtml(g.name)}</span>`).join(', ')}
+                        </div>
+                    </div>
+                    <div class="room-booking-row">
+                        <span class="room-booking-label">Check-in</span>
+                        <span>${formatDisplayDate(booking.checkIn)}</span>
+                    </div>
+                    <div class="room-booking-row">
+                        <span class="room-booking-label">Check-out</span>
+                        <span>${formatDisplayDate(booking.checkOut)}</span>
+                    </div>
+                    <div class="room-booking-row">
+                        <span class="room-booking-label">Reference</span>
+                        <span><strong>${escapeHtml(booking.reference || '-')}</strong></span>
+                    </div>
+                </div>
+            `;
+        } else {
+            document.getElementById('roomBookingInfo').innerHTML = '<div class="activity-empty">No active booking found</div>';
+        }
+    } else {
+        document.getElementById('roomModalOccupied').style.display = 'none';
+        document.getElementById('roomModalFree').style.display = 'block';
+        document.getElementById('roomStatusSelect').value = room.status;
+    }
+
     document.getElementById('roomModal').classList.add('active');
 }
 
 function closeRoomModal() {
     document.getElementById('roomModal').classList.remove('active');
     currentRoomId = null;
+}
+
+async function checkoutRoom() {
+    if (!currentRoomId) return;
+    const room = getRoomById(currentRoomId);
+    const roomNum = room ? room.number : '';
+    const today = getToday();
+
+    const activeBooking = cachedBookings.find(b =>
+        b.roomId === currentRoomId &&
+        today >= b.checkIn &&
+        today <= b.checkOut
+    );
+
+    const checkout = {
+        id: generateId(),
+        roomId: currentRoomId,
+        roomNumber: roomNum,
+        bookingId: activeBooking ? activeBooking.id : null,
+        date: today,
+        createdAt: new Date().toISOString()
+    };
+    await saveCheckoutData(checkout);
+    await updateRoomStatus(currentRoomId, 'available');
+    closeRoomModal();
+    renderRoomGrid();
+    renderTodayActivity();
+    renderDashboard();
 }
