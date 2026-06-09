@@ -66,6 +66,7 @@ async function renderDashboard() {
 
     renderRoomGrid();
     renderRecentBookings();
+    renderTodayActivity();
 }
 
 function renderRoomGrid() {
@@ -84,6 +85,52 @@ function renderRoomGrid() {
     `).join('');
 }
 
+function renderTodayActivity() {
+    const today = getToday();
+    const checkins = cachedBookings.filter(b => b.checkIn === today);
+    const checkouts = cachedBookings.filter(b => b.checkOut === today);
+
+    const checkinContainer = document.getElementById('todayCheckins');
+    if (checkins.length === 0) {
+        checkinContainer.innerHTML = '<div class="activity-empty">No check-ins today</div>';
+    } else {
+        checkinContainer.innerHTML = checkins.map(b => {
+            const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
+            const names = guestIds.map(gid => {
+                const g = cachedGuests.find(guest => guest.id === gid);
+                return g ? g.name : 'Unknown';
+            });
+            const room = cachedRooms.find(r => r.id === b.roomId);
+            return `
+                <div class="activity-item">
+                    <span class="activity-name">${names.map(n => escapeHtml(n)).join(', ')}</span>
+                    <span class="activity-room">${room ? room.number : '-'}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const checkoutContainer = document.getElementById('todayCheckouts');
+    if (checkouts.length === 0) {
+        checkoutContainer.innerHTML = '<div class="activity-empty">No check-outs today</div>';
+    } else {
+        checkoutContainer.innerHTML = checkouts.map(b => {
+            const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
+            const names = guestIds.map(gid => {
+                const g = cachedGuests.find(guest => guest.id === gid);
+                return g ? g.name : 'Unknown';
+            });
+            const room = cachedRooms.find(r => r.id === b.roomId);
+            return `
+                <div class="activity-item">
+                    <span class="activity-name">${names.map(n => escapeHtml(n)).join(', ')}</span>
+                    <span class="activity-room">${room ? room.number : '-'}</span>
+                </div>
+            `;
+        }).join('');
+    }
+}
+
 function renderRecentBookings() {
     const bookings = cachedBookings;
     const guests = cachedGuests;
@@ -95,7 +142,7 @@ function renderRecentBookings() {
 
     const tbody = document.getElementById('recentBookingsBody');
     if (recent.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings yet</td></tr>';
         return;
     }
 
@@ -108,6 +155,7 @@ function renderRecentBookings() {
         const room = rooms.find(r => r.id === b.roomId);
         return `
             <tr>
+                <td><strong>${escapeHtml(b.reference || '-')}</strong></td>
                 <td>${names.map(n => escapeHtml(n)).join(', ')}</td>
                 <td>${room ? room.number : '-'}</td>
                 <td>${formatDisplayDate(b.checkIn)}</td>
@@ -187,7 +235,7 @@ function renderBookings() {
 
     const tbody = document.getElementById('bookingsBody');
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings found</td></tr>';
         return;
     }
 
@@ -200,6 +248,7 @@ function renderBookings() {
         const room = rooms.find(r => r.id === b.roomId);
         return `
             <tr>
+                <td><strong>${escapeHtml(b.reference || '-')}</strong></td>
                 <td><div class="guest-tags">${names.map(n => `<span class="guest-tag">${escapeHtml(n)}</span>`).join('')}</div></td>
                 <td>${room ? room.number : '-'}</td>
                 <td>${formatDisplayDate(b.checkIn)}</td>
@@ -314,6 +363,12 @@ function handleSignatureUpload(event) {
 async function saveGuest(event) {
     event.preventDefault();
 
+    const phone = document.getElementById('guestPhone').value.trim();
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+        alert('Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
+        return;
+    }
+
     const id = document.getElementById('guestId').value || generateId();
     const guest = {
         id: id,
@@ -353,6 +408,7 @@ async function saveBooking(event) {
 
     const booking = {
         id: id,
+        reference: getBookingById(id)?.reference || 'HTL-' + String(cachedBookings.length + 1).padStart(3, '0'),
         guestIds: guestIds,
         roomId: roomId,
         checkIn: checkIn,
@@ -471,6 +527,12 @@ async function openBookingModal(id) {
     document.getElementById('bookingTotal').value = '';
     document.getElementById('bookingGuestSearch').value = '';
     document.getElementById('bookingGuestFilter').value = 'never-booked';
+    document.getElementById('autoTotal').checked = true;
+    document.getElementById('bookingTotal').readOnly = true;
+    document.getElementById('bookingTotal').style.background = 'var(--bg-primary)';
+    currentRoomFilter = 'all';
+    document.querySelectorAll('#roomFilterChips .chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('#roomFilterChips .chip').classList.add('active');
 
     populateGuestCheckboxes([]);
     populateRoomDropdown();
@@ -536,12 +598,31 @@ function getSelectedGuestIds() {
     return Array.from(document.querySelectorAll('#bookingGuestCheckboxes input:checked')).map(cb => cb.value);
 }
 
+let currentRoomFilter = 'all';
+
+function filterRooms(type, btn) {
+    currentRoomFilter = type;
+    document.querySelectorAll('#roomFilterChips .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    populateRoomDropdown();
+}
+
 function populateRoomDropdown() {
     const select = document.getElementById('bookingRoom');
-    const rooms = getRooms();
+    const rooms = cachedRooms.filter(r => r.status === 'available');
+    const filter = currentRoomFilter;
+
+    const filtered = rooms.filter(r => {
+        if (filter === 'all') return true;
+        if (filter === 'AC') return r.type === 'AC';
+        if (filter === 'Non-AC') return r.type === 'Non-AC';
+        if (filter === 'Single') return r.bedType === 'Single';
+        if (filter === 'Double') return r.bedType === 'Double';
+        return true;
+    });
 
     select.innerHTML = '<option value="">Select Room</option>' +
-        rooms.map(r => {
+        filtered.map(r => {
             const label = `${r.number} - ${r.type} ${r.bedType}`;
             return `<option value="${r.id}">${label}</option>`;
         }).join('');
@@ -563,7 +644,40 @@ function updateBookingPrice() {
 }
 
 function calculateTotal() {
-    // Total price is manually entered by staff
+    const autoCheck = document.getElementById('autoTotal');
+    if (!autoCheck || !autoCheck.checked) return;
+
+    const pricePerNight = parseFloat(document.getElementById('bookingPrice').value) || 0;
+    const checkIn = document.getElementById('bookingCheckIn').value;
+    const checkOut = document.getElementById('bookingCheckOut').value;
+
+    if (pricePerNight > 0 && checkIn && checkOut) {
+        const nights = calculateNights(checkIn, checkOut);
+        if (nights > 0) {
+            document.getElementById('bookingTotal').value = pricePerNight * nights;
+        }
+    }
+}
+
+function toggleAutoTotal() {
+    const auto = document.getElementById('autoTotal').checked;
+    const totalInput = document.getElementById('bookingTotal');
+    if (auto) {
+        totalInput.readOnly = true;
+        totalInput.style.background = 'var(--bg-primary)';
+        calculateTotal();
+    } else {
+        totalInput.readOnly = false;
+        totalInput.style.background = '';
+    }
+}
+
+function onTotalManualEdit() {
+    const autoCheck = document.getElementById('autoTotal');
+    if (autoCheck.checked) {
+        autoCheck.checked = false;
+        toggleAutoTotal();
+    }
 }
 
 function openRoomModal(roomId) {

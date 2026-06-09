@@ -819,6 +819,127 @@ body {
     outline: none;
 }
 
+/* Total Price Row */
+.total-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.total-price-row label:first-child {
+    margin-bottom: 0;
+}
+
+.auto-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+
+.auto-toggle input[type="checkbox"] {
+    width: auto;
+    accent-color: var(--primary);
+}
+
+/* Room Filter Chips */
+.room-filter-chips {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.chip {
+    padding: 5px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--bg-white);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+
+.chip:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.chip.active {
+    background: var(--text-primary);
+    color: white;
+    border-color: var(--text-primary);
+}
+
+/* Today's Activity */
+.activity-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.activity-card {
+    margin-bottom: 0;
+}
+
+.checkin-card {
+    border-top: 3px solid var(--success);
+}
+
+.checkout-card {
+    border-top: 3px solid var(--danger);
+}
+
+.activity-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-name {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.activity-room {
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+.activity-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 20px;
+    font-size: 13px;
+}
+
+@media (max-width: 768px) {
+    .activity-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .stats-grid {

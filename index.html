@@ -86,6 +86,18 @@
                     </div>
                 </div>
 
+                <!-- Today's Activity -->
+                <div class="activity-grid">
+                    <div class="card activity-card checkin-card">
+                        <h2 class="card-title">Check-ins Today</h2>
+                        <div id="todayCheckins" class="activity-list"></div>
+                    </div>
+                    <div class="card activity-card checkout-card">
+                        <h2 class="card-title">Check-outs Today</h2>
+                        <div id="todayCheckouts" class="activity-list"></div>
+                    </div>
+                </div>
+
                 <!-- Room Availability -->
                 <div class="card">
                     <h2 class="card-title">Room availability</h2>
@@ -105,6 +117,7 @@
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <th>Ref</th>
                                     <th>Guest</th>
                                     <th>Room</th>
                                     <th>Check-in</th>
@@ -173,6 +186,7 @@
                         <table class="table">
                             <thead>
                                 <tr>
+                                    <th>Ref</th>
                                     <th>Guest(s)</th>
                                     <th>Room</th>
                                     <th>Check-in</th>
@@ -205,7 +219,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="guestPhone">Phone</label>
-                        <input type="tel" id="guestPhone" required>
+                        <input type="tel" id="guestPhone" required pattern="[6-9]\d{9}" maxlength="10" placeholder="10-digit mobile number">
                     </div>
                     <div class="form-group">
                         <label for="guestEmail">Email</label>
@@ -298,12 +312,19 @@
                     <div class="guest-checkbox-list" id="bookingGuestCheckboxes"></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="bookingRoom">Room</label>
-                        <select id="bookingRoom" required onchange="updateBookingPrice()">
-                            <option value="">Select Room</option>
-                        </select>
+                <div class="form-group">
+                    <label for="bookingRoom">Room</label>
+                    <div class="room-filter-chips" id="roomFilterChips">
+                        <button type="button" class="chip active" onclick="filterRooms('all', this)">All</button>
+                        <button type="button" class="chip" onclick="filterRooms('AC', this)">AC</button>
+                        <button type="button" class="chip" onclick="filterRooms('Non-AC', this)">Non-AC</button>
+                        <button type="button" class="chip" onclick="filterRooms('Single', this)">Single</button>
+                        <button type="button" class="chip" onclick="filterRooms('Double', this)">Double</button>
                     </div>
+                    <select id="bookingRoom" required onchange="updateBookingPrice()">
+                        <option value="">Select Room</option>
+                    </select>
+                </div>
                     <div class="form-group">
                         <label for="bookingPrice">Price/Night (Rs.)</label>
                         <input type="number" id="bookingPrice" min="0" placeholder="Enter price" oninput="calculateTotal()">
@@ -320,8 +341,14 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="bookingTotal">Total Price (Rs.)</label>
-                    <input type="number" id="bookingTotal" min="0" placeholder="Enter total price">
+                    <div class="total-price-row">
+                        <label for="bookingTotal">Total Price (Rs.)</label>
+                        <label class="auto-toggle">
+                            <input type="checkbox" id="autoTotal" checked onchange="toggleAutoTotal()">
+                            <span>Auto</span>
+                        </label>
+                    </div>
+                    <input type="number" id="bookingTotal" min="0" placeholder="Auto-calculated" oninput="onTotalManualEdit()">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeBookingModal()">Cancel</button>
