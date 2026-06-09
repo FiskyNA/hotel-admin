@@ -18,105 +18,113 @@ const ROOMS_DATA = [
     { number: '303', type: 'Non-AC', bedType: 'Double', pricePerNight: 0 }
 ];
 
-function initRooms() {
-    let rooms = localStorage.getItem('hotel_rooms');
-    if (!rooms) {
-        const initialRooms = ROOMS_DATA.map(r => ({
-            id: generateId(),
-            number: r.number,
-            type: r.type,
-            bedType: r.bedType,
-            pricePerNight: r.pricePerNight,
-            status: 'available'
-        }));
-        localStorage.setItem('hotel_rooms', JSON.stringify(initialRooms));
-        return initialRooms;
+let cachedRooms = [];
+let cachedGuests = [];
+let cachedBookings = [];
+
+async function initRooms() {
+    const snapshot = await db.collection('rooms').get();
+    if (snapshot.empty) {
+        const batch = db.batch();
+        ROOMS_DATA.forEach(r => {
+            const ref = db.collection('rooms').doc();
+            batch.set(ref, {
+                id: ref.id,
+                number: r.number,
+                type: r.type,
+                bedType: r.bedType,
+                pricePerNight: r.pricePerNight,
+                status: 'available'
+            });
+        });
+        await batch.commit();
+        const newSnapshot = await db.collection('rooms').get();
+        cachedRooms = newSnapshot.docs.map(doc => doc.data());
+    } else {
+        cachedRooms = snapshot.docs.map(doc => doc.data());
     }
-    return JSON.parse(rooms);
+    return cachedRooms;
 }
 
 function getRooms() {
-    const rooms = localStorage.getItem('hotel_rooms');
-    return rooms ? JSON.parse(rooms) : [];
+    return cachedRooms;
 }
 
 function getRoomById(id) {
-    return getRooms().find(r => r.id === id);
+    return cachedRooms.find(r => r.id === id);
 }
 
 function getRoomByNumber(number) {
-    return getRooms().find(r => r.number === number);
+    return cachedRooms.find(r => r.number === number);
 }
 
-function updateRoomStatus(roomId, status) {
-    const rooms = getRooms();
-    const index = rooms.findIndex(r => r.id === roomId);
-    if (index !== -1) {
-        rooms[index].status = status;
-        localStorage.setItem('hotel_rooms', JSON.stringify(rooms));
-    }
+async function updateRoomStatus(roomId, status) {
+    await db.collection('rooms').doc(roomId).update({ status });
+    const room = cachedRooms.find(r => r.id === roomId);
+    if (room) room.status = status;
 }
 
-function getGuests() {
-    const guests = localStorage.getItem('hotel_guests');
-    return guests ? JSON.parse(guests) : [];
+async function getGuests() {
+    const snapshot = await db.collection('guests').get();
+    cachedGuests = snapshot.docs.map(doc => doc.data());
+    return cachedGuests;
 }
 
 function getGuestById(id) {
-    return getGuests().find(g => g.id === id);
+    return cachedGuests.find(g => g.id === id);
 }
 
-function saveGuestData(guest) {
-    const guests = getGuests();
-    const index = guests.findIndex(g => g.id === guest.id);
+async function saveGuestData(guest) {
+    await db.collection('guests').doc(guest.id).set(guest);
+    const index = cachedGuests.findIndex(g => g.id === guest.id);
     if (index !== -1) {
-        guests[index] = guest;
+        cachedGuests[index] = guest;
     } else {
-        guests.push(guest);
+        cachedGuests.push(guest);
     }
-    localStorage.setItem('hotel_guests', JSON.stringify(guests));
 }
 
-function deleteGuestData(id) {
-    const guests = getGuests().filter(g => g.id !== id);
-    localStorage.setItem('hotel_guests', JSON.stringify(guests));
+async function deleteGuestData(id) {
+    await db.collection('guests').doc(id).delete();
+    cachedGuests = cachedGuests.filter(g => g.id !== id);
 }
 
-function getBookings() {
-    const bookings = localStorage.getItem('hotel_bookings');
-    return bookings ? JSON.parse(bookings) : [];
+async function getBookings() {
+    const snapshot = await db.collection('bookings').get();
+    cachedBookings = snapshot.docs.map(doc => doc.data());
+    return cachedBookings;
 }
 
 function getBookingById(id) {
-    return getBookings().find(b => b.id === id);
+    return cachedBookings.find(b => b.id === id);
 }
 
-function saveBookingData(booking) {
-    const bookings = getBookings();
-    const index = bookings.findIndex(b => b.id === booking.id);
+async function saveBookingData(booking) {
+    await db.collection('bookings').doc(booking.id).set(booking);
+    const index = cachedBookings.findIndex(b => b.id === booking.id);
     if (index !== -1) {
-        bookings[index] = booking;
+        cachedBookings[index] = booking;
     } else {
-        bookings.push(booking);
+        cachedBookings.push(booking);
     }
-    localStorage.setItem('hotel_bookings', JSON.stringify(bookings));
 }
 
-function deleteBookingData(id) {
-    const bookings = getBookings().filter(b => b.id !== id);
-    localStorage.setItem('hotel_bookings', JSON.stringify(bookings));
+async function deleteBookingData(id) {
+    await db.collection('bookings').doc(id).delete();
+    cachedBookings = cachedBookings.filter(b => b.id !== id);
 }
 
-function getActiveBookings() {
+async function getActiveBookings() {
     const today = getToday();
-    return getBookings().filter(b =>
+    const bookings = await getBookings();
+    return bookings.filter(b =>
         (b.status === 'Confirmed' || b.status === 'Checked-In') &&
         b.checkOut >= today
     );
 }
 
-function isRoomAvailable(roomId, checkIn, checkOut, excludeBookingId) {
-    const bookings = getBookings();
+async function isRoomAvailable(roomId, checkIn, checkOut, excludeBookingId) {
+    const bookings = await getBookings();
     return !bookings.some(b =>
         b.roomId === roomId &&
         b.id !== excludeBookingId &&
@@ -127,12 +135,12 @@ function isRoomAvailable(roomId, checkIn, checkOut, excludeBookingId) {
     );
 }
 
-function updateRoomStatusesFromBookings() {
-    const rooms = getRooms();
+async function updateRoomStatusesFromBookings() {
     const today = getToday();
-    const bookings = getBookings();
+    const bookings = cachedBookings.length > 0 ? cachedBookings : await getBookings();
 
-    rooms.forEach(room => {
+    const batch = db.batch();
+    cachedRooms.forEach(room => {
         const activeBooking = bookings.find(b =>
             b.roomId === room.id &&
             b.status !== 'Cancelled' &&
@@ -141,12 +149,20 @@ function updateRoomStatusesFromBookings() {
             today <= b.checkOut
         );
 
+        let newStatus;
         if (activeBooking) {
-            room.status = 'occupied';
+            newStatus = 'occupied';
         } else if (room.status === 'occupied') {
-            room.status = 'available';
+            newStatus = 'available';
+        } else {
+            return;
+        }
+
+        if (room.status !== newStatus) {
+            room.status = newStatus;
+            batch.update(db.collection('rooms').doc(room.id), { status: newStatus });
         }
     });
 
-    localStorage.setItem('hotel_rooms', JSON.stringify(rooms));
+    await batch.commit();
 }

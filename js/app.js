@@ -4,28 +4,31 @@ let currentGuestSignature = null;
 let currentDetailGuestId = null;
 let currentRoomId = null;
 
-document.addEventListener('DOMContentLoaded', function() {
-    initRooms();
-    updateRoomStatusesFromBookings();
+document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
     setupSidebarToggle();
+    await initRooms();
+    await updateRoomStatusesFromBookings();
+    await loadAllData();
     renderDashboard();
-    renderGuests();
-    renderBookings();
 });
+
+async function loadAllData() {
+    await Promise.all([getGuests(), getBookings()]);
+}
 
 function setupNavigation() {
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', async function() {
             const page = this.dataset.page;
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             this.classList.add('active');
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById('page-' + page).classList.add('active');
             closeSidebar();
-            if (page === 'dashboard') renderDashboard();
-            if (page === 'guests') renderGuests();
-            if (page === 'bookings') renderBookings();
+            if (page === 'dashboard') await renderDashboard();
+            if (page === 'guests') await renderGuests();
+            if (page === 'bookings') await renderBookings();
         });
     });
 }
@@ -42,11 +45,14 @@ function closeSidebar() {
     document.getElementById('sidebarOverlay').classList.remove('active');
 }
 
-function renderDashboard() {
-    const guests = getGuests();
-    const bookings = getBookings();
+async function renderDashboard() {
+    const guests = await getGuests();
+    const bookings = await getBookings();
     const rooms = getRooms();
-    const activeBookings = getActiveBookings();
+    const activeBookings = bookings.filter(b => {
+        const today = getToday();
+        return (b.status === 'Confirmed' || b.status === 'Checked-In') && b.checkOut >= today;
+    });
 
     document.getElementById('statTotalGuests').textContent = guests.length;
     document.getElementById('statActiveBookings').textContent = activeBookings.length;
@@ -54,7 +60,7 @@ function renderDashboard() {
     document.getElementById('statOccupiedRooms').textContent = rooms.filter(r => r.status === 'occupied').length;
 
     renderRoomGrid();
-    renderRecentBookings();
+    await renderRecentBookings();
 }
 
 function renderRoomGrid() {
@@ -68,9 +74,9 @@ function renderRoomGrid() {
     `).join('');
 }
 
-function renderRecentBookings() {
-    const bookings = getBookings();
-    const guests = getGuests();
+async function renderRecentBookings() {
+    const bookings = await getBookings();
+    const guests = await getGuests();
     const rooms = getRooms();
 
     const recent = bookings
@@ -92,14 +98,14 @@ function renderRecentBookings() {
                 <td>${room ? room.number : '-'}</td>
                 <td>${formatDisplayDate(b.checkIn)}</td>
                 <td>${formatDisplayDate(b.checkOut)}</td>
-                <td><span class="status-badge ${b.status.toLowerCase().replace('-', '-')}">${b.status}</span></td>
+                <td>-</td>
             </tr>
         `;
     }).join('');
 }
 
-function renderGuests() {
-    const guests = getGuests();
+async function renderGuests() {
+    const guests = await getGuests();
     const search = document.getElementById('guestSearch').value.toLowerCase();
     const filtered = guests.filter(g =>
         g.name.toLowerCase().includes(search) ||
@@ -130,9 +136,9 @@ function filterGuests() {
     renderGuests();
 }
 
-function renderBookings() {
-    const bookings = getBookings();
-    const guests = getGuests();
+async function renderBookings() {
+    const bookings = await getBookings();
+    const guests = await getGuests();
     const rooms = getRooms();
     const search = document.getElementById('bookingSearch').value.toLowerCase();
 
@@ -266,7 +272,7 @@ function handleSignatureUpload(event) {
     reader.readAsDataURL(file);
 }
 
-function saveGuest(event) {
+async function saveGuest(event) {
     event.preventDefault();
 
     const id = document.getElementById('guestId').value || generateId();
@@ -283,17 +289,17 @@ function saveGuest(event) {
         createdAt: getGuestById(id)?.createdAt || new Date().toISOString()
     };
 
-    saveGuestData(guest);
+    await saveGuestData(guest);
     closeGuestModal();
-    renderGuests();
-    renderDashboard();
+    await renderGuests();
+    await renderDashboard();
 }
 
-function deleteGuest(id) {
+async function deleteGuest(id) {
     if (confirm('Are you sure you want to delete this guest?')) {
-        deleteGuestData(id);
-        renderGuests();
-        renderDashboard();
+        await deleteGuestData(id);
+        await renderGuests();
+        await renderDashboard();
     }
 }
 
@@ -359,9 +365,9 @@ function openGuestDetailModal(id) {
         openGuestModal(id);
     };
 
-    document.getElementById('deleteGuestFromDetail').onclick = function() {
+    document.getElementById('deleteGuestFromDetail').onclick = async function() {
         closeGuestDetailModal();
-        deleteGuest(id);
+        await deleteGuest(id);
     };
 
     document.getElementById('guestDetailModal').classList.add('active');
@@ -372,7 +378,7 @@ function closeGuestDetailModal() {
     currentDetailGuestId = null;
 }
 
-function openBookingModal(id) {
+async function openBookingModal(id) {
     const modal = document.getElementById('bookingModal');
     const title = document.getElementById('bookingModalTitle');
     const form = document.getElementById('bookingForm');
@@ -382,7 +388,7 @@ function openBookingModal(id) {
     document.getElementById('bookingPrice').value = '';
     document.getElementById('bookingTotal').value = '';
 
-    populateGuestDropdown();
+    await populateGuestDropdown();
     populateRoomDropdown();
 
     if (id) {
@@ -394,7 +400,6 @@ function openBookingModal(id) {
             document.getElementById('bookingRoom').value = booking.roomId;
             document.getElementById('bookingCheckIn').value = booking.checkIn;
             document.getElementById('bookingCheckOut').value = booking.checkOut;
-            document.getElementById('bookingStatus').value = booking.status;
             document.getElementById('bookingPrice').value = booking.pricePerNight || '';
             document.getElementById('bookingTotal').value = booking.totalPrice || '';
         }
@@ -409,9 +414,9 @@ function closeBookingModal() {
     document.getElementById('bookingModal').classList.remove('active');
 }
 
-function populateGuestDropdown() {
+async function populateGuestDropdown() {
     const select = document.getElementById('bookingGuest');
-    const guests = getGuests();
+    const guests = await getGuests();
     select.innerHTML = '<option value="">Select Guest</option>' +
         guests.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
 }
@@ -419,7 +424,6 @@ function populateGuestDropdown() {
 function populateRoomDropdown() {
     const select = document.getElementById('bookingRoom');
     const rooms = getRooms();
-    const bookingId = document.getElementById('bookingId').value;
 
     select.innerHTML = '<option value="">Select Room</option>' +
         rooms.map(r => {
@@ -441,19 +445,17 @@ function updateBookingPrice() {
     } else {
         priceInput.value = '';
     }
-    calculateTotal();
 }
 
 function calculateTotal() {
     // Total price is manually entered by staff
 }
 
-function saveBooking(event) {
+async function saveBooking(event) {
     event.preventDefault();
 
     const id = document.getElementById('bookingId').value || generateId();
     const roomId = document.getElementById('bookingRoom').value;
-    const room = getRoomById(roomId);
     const checkIn = document.getElementById('bookingCheckIn').value;
     const checkOut = document.getElementById('bookingCheckOut').value;
 
@@ -468,19 +470,19 @@ function saveBooking(event) {
         createdAt: getBookingById(id)?.createdAt || new Date().toISOString()
     };
 
-    saveBookingData(booking);
-    updateRoomStatusesFromBookings();
+    await saveBookingData(booking);
+    await updateRoomStatusesFromBookings();
     closeBookingModal();
-    renderBookings();
-    renderDashboard();
+    await renderBookings();
+    await renderDashboard();
 }
 
-function deleteBooking(id) {
+async function deleteBooking(id) {
     if (confirm('Are you sure you want to delete this booking?')) {
-        deleteBookingData(id);
-        updateRoomStatusesFromBookings();
-        renderBookings();
-        renderDashboard();
+        await deleteBookingData(id);
+        await updateRoomStatusesFromBookings();
+        await renderBookings();
+        await renderDashboard();
     }
 }
 
@@ -502,11 +504,11 @@ function closeRoomModal() {
     currentRoomId = null;
 }
 
-function saveRoomStatus() {
+async function saveRoomStatus() {
     if (!currentRoomId) return;
     const status = document.getElementById('roomStatusSelect').value;
-    updateRoomStatus(currentRoomId, status);
+    await updateRoomStatus(currentRoomId, status);
     closeRoomModal();
     renderRoomGrid();
-    renderDashboard();
+    await renderDashboard();
 }
