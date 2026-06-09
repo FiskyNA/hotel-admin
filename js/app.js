@@ -443,6 +443,10 @@ async function saveRoomStatus() {
             createdAt: new Date().toISOString()
         };
         await saveCheckoutData(checkout);
+
+        if (activeBooking) {
+            await updateBookingStatus(activeBooking.id, 'Checked-Out');
+        }
     }
 
     await updateRoomStatus(currentRoomId, newStatus);
@@ -775,9 +779,15 @@ async function checkoutRoom() {
         createdAt: new Date().toISOString()
     };
     await saveCheckoutData(checkout);
+
+    if (activeBooking) {
+        await updateBookingStatus(activeBooking.id, 'Checked-Out');
+    }
+
     await updateRoomStatus(currentRoomId, 'available');
     closeRoomModal();
     renderRoomGrid();
     renderTodayActivity();
+    renderBookings();
     renderDashboard();
 }

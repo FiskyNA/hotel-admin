@@ -185,3 +185,9 @@ async function saveCheckoutData(checkout) {
     await db.collection('checkouts').doc(checkout.id).set(checkout);
     cachedCheckouts.push(checkout);
 }
+
+async function updateBookingStatus(bookingId, status) {
+    await db.collection('bookings').doc(bookingId).update({ status });
+    const booking = cachedBookings.find(b => b.id === bookingId);
+    if (booking) booking.status = status;
+}
