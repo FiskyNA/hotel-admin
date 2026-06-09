@@ -287,8 +287,8 @@
             <form id="bookingForm" onsubmit="saveBooking(event)">
                 <input type="hidden" id="bookingId">
                 <div class="form-group">
-                    <label for="bookingGuest">Guest(s) - Hold Ctrl/Cmd to select multiple</label>
-                    <select id="bookingGuest" required multiple size="4"></select>
+                    <label>Guest(s)</label>
+                    <div class="guest-checkbox-list" id="bookingGuestCheckboxes"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">

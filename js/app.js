@@ -342,6 +342,49 @@ async function deleteGuest(id) {
     }
 }
 
+async function saveBooking(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('bookingId').value || generateId();
+    const roomId = document.getElementById('bookingRoom').value;
+    const checkIn = document.getElementById('bookingCheckIn').value;
+    const checkOut = document.getElementById('bookingCheckOut').value;
+    const guestIds = getSelectedGuestIds();
+
+    const booking = {
+        id: id,
+        guestIds: guestIds,
+        roomId: roomId,
+        checkIn: checkIn,
+        checkOut: checkOut,
+        pricePerNight: parseFloat(document.getElementById('bookingPrice').value) || 0,
+        totalPrice: parseFloat(document.getElementById('bookingTotal').value) || 0,
+        createdAt: getBookingById(id)?.createdAt || new Date().toISOString()
+    };
+
+    await saveBookingData(booking);
+    closeBookingModal();
+    renderBookings();
+    renderDashboard();
+}
+
+async function deleteBooking(id) {
+    if (confirm('Are you sure you want to delete this booking?')) {
+        await deleteBookingData(id);
+        renderBookings();
+        renderDashboard();
+    }
+}
+
+async function saveRoomStatus() {
+    if (!currentRoomId) return;
+    const status = document.getElementById('roomStatusSelect').value;
+    await updateRoomStatus(currentRoomId, status);
+    closeRoomModal();
+    renderRoomGrid();
+    renderDashboard();
+}
+
 function openGuestDetailModal(id) {
     const guest = getGuestById(id);
     if (!guest) return;
@@ -427,8 +470,7 @@ async function openBookingModal(id) {
     document.getElementById('bookingPrice').value = '';
     document.getElementById('bookingTotal').value = '';
 
-    await loadAllData();
-    populateGuestDropdown();
+    populateGuestCheckboxes([]);
     populateRoomDropdown();
 
     if (id) {
@@ -436,11 +478,8 @@ async function openBookingModal(id) {
         if (booking) {
             title.textContent = 'Edit Booking';
             document.getElementById('bookingId').value = booking.id;
-            const guestSelect = document.getElementById('bookingGuest');
             const guestIds = booking.guestIds || (booking.guestId ? [booking.guestId] : []);
-            Array.from(guestSelect.options).forEach(opt => {
-                opt.selected = guestIds.includes(opt.value);
-            });
+            populateGuestCheckboxes(guestIds);
             document.getElementById('bookingRoom').value = booking.roomId;
             document.getElementById('bookingCheckIn').value = booking.checkIn;
             document.getElementById('bookingCheckOut').value = booking.checkOut;
@@ -458,10 +497,18 @@ function closeBookingModal() {
     document.getElementById('bookingModal').classList.remove('active');
 }
 
-function populateGuestDropdown() {
-    const select = document.getElementById('bookingGuest');
-    const guests = cachedGuests;
-    select.innerHTML = guests.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+function populateGuestCheckboxes(selectedIds) {
+    const container = document.getElementById('bookingGuestCheckboxes');
+    container.innerHTML = cachedGuests.map(g => `
+        <label class="guest-checkbox">
+            <input type="checkbox" value="${g.id}" ${selectedIds.includes(g.id) ? 'checked' : ''}>
+            <span>${escapeHtml(g.name)}</span>
+        </label>
+    `).join('');
+}
+
+function getSelectedGuestIds() {
+    return Array.from(document.querySelectorAll('#bookingGuestCheckboxes input:checked')).map(cb => cb.value);
 }
 
 function populateRoomDropdown() {
@@ -492,43 +539,6 @@ function updateBookingPrice() {
 
 function calculateTotal() {
     // Total price is manually entered by staff
-}
-
-async function saveBooking(event) {
-    event.preventDefault();
-
-    const id = document.getElementById('bookingId').value || generateId();
-    const roomId = document.getElementById('bookingRoom').value;
-    const checkIn = document.getElementById('bookingCheckIn').value;
-    const checkOut = document.getElementById('bookingCheckOut').value;
-    const guestSelect = document.getElementById('bookingGuest');
-    const guestIds = Array.from(guestSelect.selectedOptions).map(opt => opt.value);
-
-    const booking = {
-        id: id,
-        guestIds: guestIds,
-        roomId: roomId,
-        checkIn: checkIn,
-        checkOut: checkOut,
-        pricePerNight: parseFloat(document.getElementById('bookingPrice').value) || 0,
-        totalPrice: parseFloat(document.getElementById('bookingTotal').value) || 0,
-        createdAt: getBookingById(id)?.createdAt || new Date().toISOString()
-    };
-
-    await saveBookingData(booking);
-    await updateRoomStatusesFromBookings();
-    closeBookingModal();
-    renderBookings();
-    renderDashboard();
-}
-
-async function deleteBooking(id) {
-    if (confirm('Are you sure you want to delete this booking?')) {
-        await deleteBookingData(id);
-        await updateRoomStatusesFromBookings();
-        renderBookings();
-        renderDashboard();
-    }
 }
 
 function openRoomModal(roomId) {
