@@ -187,6 +187,7 @@ async function saveCheckoutData(checkout) {
 }
 
 async function updateBookingStatus(bookingId, status) {
+    if (!bookingId) return;
     await db.collection('bookings').doc(bookingId).update({ status });
     const booking = cachedBookings.find(b => b.id === bookingId);
     if (booking) booking.status = status;

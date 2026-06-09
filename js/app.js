@@ -770,18 +770,22 @@ async function checkoutRoom() {
         today <= b.checkOut
     );
 
-    const checkout = {
-        id: generateId(),
-        roomId: currentRoomId,
-        roomNumber: roomNum,
-        bookingId: activeBooking ? activeBooking.id : null,
-        date: today,
-        createdAt: new Date().toISOString()
-    };
-    await saveCheckoutData(checkout);
+    try {
+        const checkout = {
+            id: generateId(),
+            roomId: currentRoomId,
+            roomNumber: roomNum,
+            bookingId: activeBooking ? activeBooking.id : null,
+            date: today,
+            createdAt: new Date().toISOString()
+        };
+        await saveCheckoutData(checkout);
 
-    if (activeBooking) {
-        await updateBookingStatus(activeBooking.id, 'Checked-Out');
+        if (activeBooking) {
+            await updateBookingStatus(activeBooking.id, 'Checked-Out');
+        }
+    } catch (err) {
+        console.error('Checkout save error:', err);
     }
 
     await updateRoomStatus(currentRoomId, 'available');
