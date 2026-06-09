@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Admin - Staff Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <span class="logo-icon">&#127976;</span>
+                    <div>
+                        <div class="logo-title">Hotel Admin</div>
+                        <div class="logo-subtitle">Staff dashboard</div>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-label">Main</div>
+                <button class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">&#9632;</span>
+                    Dashboard
+                </button>
+                <button class="nav-item" data-page="guests">
+                    <span class="nav-icon">&#128101;</span>
+                    Guests
+                </button>
+                <button class="nav-item" data-page="bookings">
+                    <span class="nav-icon">&#128197;</span>
+                    Bookings
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <button class="sidebar-toggle" id="sidebarToggle">&#9776;</button>
+            </header>
+
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <p>Hotel operations at a glance.</p>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Guests</span>
+                            <span class="stat-icon">&#128101;</span>
+                        </div>
+                        <div class="stat-value" id="statTotalGuests">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Active Bookings</span>
+                            <span class="stat-icon">&#128197;</span>
+                        </div>
+                        <div class="stat-value" id="statActiveBookings">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Available Rooms</span>
+                            <span class="stat-icon">&#128716;</span>
+                        </div>
+                        <div class="stat-value" id="statAvailableRooms">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Occupied Rooms</span>
+                            <span class="stat-icon">&#127968;</span>
+                        </div>
+                        <div class="stat-value" id="statOccupiedRooms">0</div>
+                    </div>
+                </div>
+
+                <!-- Room Availability -->
+                <div class="card">
+                    <h2 class="card-title">Room availability</h2>
+                    <div class="room-grid" id="roomGrid"></div>
+                    <div class="room-legend">
+                        <span class="legend-item"><span class="legend-dot available"></span> Available</span>
+                        <span class="legend-item"><span class="legend-dot occupied"></span> Occupied</span>
+                        <span class="legend-item"><span class="legend-dot cleaning"></span> Cleaning</span>
+                        <span class="legend-item"><span class="legend-dot maintenance"></span> Maintenance</span>
+                    </div>
+                </div>
+
+                <!-- Recent Bookings -->
+                <div class="card">
+                    <h2 class="card-title">Recent bookings</h2>
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Guest</th>
+                                    <th>Room</th>
+                                    <th>Check-in</th>
+                                    <th>Check-out</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentBookingsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guests Page -->
+            <div class="page" id="page-guests">
+                <div class="page-header">
+                    <div>
+                        <h1>Guests</h1>
+                        <p>Manage hotel guests.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openGuestModal()">+ Add Guest</button>
+                </div>
+
+                <div class="card">
+                    <div class="search-bar">
+                        <input type="text" id="guestSearch" placeholder="Search guests..." oninput="filterGuests()">
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Serial No</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="guestsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings Page -->
+            <div class="page" id="page-bookings">
+                <div class="page-header">
+                    <div>
+                        <h1>Bookings</h1>
+                        <p>Manage all bookings.</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openBookingModal()">+ Add Booking</button>
+                </div>
+
+                <div class="card">
+                    <div class="search-bar">
+                        <input type="text" id="bookingSearch" placeholder="Search bookings..." oninput="filterBookings()">
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Guest</th>
+                                    <th>Room</th>
+                                    <th>Check-in</th>
+                                    <th>Check-out</th>
+                                    <th>Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookingsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Guest Modal -->
+    <div class="modal-overlay" id="guestModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="guestModalTitle">Add Guest</h2>
+                <button class="modal-close" onclick="closeGuestModal()">&times;</button>
+            </div>
+            <form id="guestForm" onsubmit="saveGuest(event)">
+                <input type="hidden" id="guestId">
+                <div class="form-group">
+                    <label for="guestName">Full Name</label>
+                    <input type="text" id="guestName" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="guestPhone">Phone</label>
+                        <input type="tel" id="guestPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="guestEmail">Email</label>
+                        <input type="email" id="guestEmail">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="guestSerialNo">Serial No (ID Number)</label>
+                    <input type="text" id="guestSerialNo" required>
+                </div>
+                <div class="form-group">
+                    <label>Aadhaar Card Photo - Front</label>
+                    <div class="upload-area" onclick="document.getElementById('aadharFront').click()">
+                        <input type="file" id="aadharFront" accept="image/*" onchange="handleAadharUpload(event, 'front')" style="display:none">
+                        <div class="upload-placeholder" id="frontPlaceholder">
+                            <span class="upload-icon">&#128247;</span>
+                            <span>Upload front photo</span>
+                        </div>
+                        <img id="frontPreview" class="upload-preview" style="display:none">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Aadhaar Card Photo - Back</label>
+                    <div class="upload-area" onclick="document.getElementById('aadharBack').click()">
+                        <input type="file" id="aadharBack" accept="image/*" onchange="handleAadharUpload(event, 'back')" style="display:none">
+                        <div class="upload-placeholder" id="backPlaceholder">
+                            <span class="upload-icon">&#128247;</span>
+                            <span>Upload back photo</span>
+                        </div>
+                        <img id="backPreview" class="upload-preview" style="display:none">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Signature Photo</label>
+                    <div class="upload-area" onclick="document.getElementById('signaturePhoto').click()">
+                        <input type="file" id="signaturePhoto" accept="image/*" onchange="handleSignatureUpload(event)" style="display:none">
+                        <div class="upload-placeholder" id="signaturePlaceholder">
+                            <span class="upload-icon">&#9998;</span>
+                            <span>Upload signature photo</span>
+                        </div>
+                        <img id="signaturePreview" class="upload-preview" style="display:none">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="guestNotes">Notes</label>
+                    <textarea id="guestNotes" rows="3" placeholder="Any additional notes..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeGuestModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Guest</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Guest Detail Modal -->
+    <div class="modal-overlay" id="guestDetailModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2>Guest Details</h2>
+                <button class="modal-close" onclick="closeGuestDetailModal()">&times;</button>
+            </div>
+            <div class="guest-detail-content" id="guestDetailContent"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeGuestDetailModal()">Close</button>
+                <button class="btn btn-primary" id="editGuestFromDetail">Edit</button>
+                <button class="btn btn-danger" id="deleteGuestFromDetail">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div class="modal-overlay" id="bookingModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="bookingModalTitle">Add Booking</h2>
+                <button class="modal-close" onclick="closeBookingModal()">&times;</button>
+            </div>
+            <form id="bookingForm" onsubmit="saveBooking(event)">
+                <input type="hidden" id="bookingId">
+                <div class="form-group">
+                    <label for="bookingGuest">Guest</label>
+                    <select id="bookingGuest" required>
+                        <option value="">Select Guest</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingRoom">Room</label>
+                        <select id="bookingRoom" required onchange="updateBookingPrice()">
+                            <option value="">Select Room</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingPrice">Price/Night (Rs.)</label>
+                        <input type="number" id="bookingPrice" min="0" placeholder="Enter price" oninput="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bookingCheckIn">Check-in</label>
+                        <input type="date" id="bookingCheckIn" required onchange="calculateTotal()">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookingCheckOut">Check-out</label>
+                        <input type="date" id="bookingCheckOut" required onchange="calculateTotal()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="bookingTotal">Total Price (Rs.)</label>
+                    <input type="number" id="bookingTotal" min="0" placeholder="Enter total price">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeBookingModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Room Status Modal -->
+    <div class="modal-overlay" id="roomModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h2>Room <span id="roomModalNumber"></span></h2>
+                <button class="modal-close" onclick="closeRoomModal()">&times;</button>
+            </div>
+            <div class="room-modal-info" id="roomModalInfo"></div>
+            <div class="form-group">
+                <label>Change Status</label>
+                <select id="roomStatusSelect">
+                    <option value="available">Available</option>
+                    <option value="occupied">Occupied</option>
+                    <option value="cleaning">Cleaning</option>
+                    <option value="maintenance">Maintenance</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRoomModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRoomStatus()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
