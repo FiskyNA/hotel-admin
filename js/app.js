@@ -69,7 +69,12 @@ async function renderDashboard() {
 }
 
 function renderRoomGrid() {
-    const rooms = getRooms();
+    const rooms = [...cachedRooms].sort((a, b) => {
+        const numA = parseInt(a.number);
+        const numB = parseInt(b.number);
+        if (numA !== numB) return numA - numB;
+        return a.number.localeCompare(b.number);
+    });
     const grid = document.getElementById('roomGrid');
     grid.innerHTML = rooms.map(room => `
         <div class="room-cell ${room.status}" onclick="openRoomModal('${room.id}')">
