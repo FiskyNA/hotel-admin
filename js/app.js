@@ -50,6 +50,31 @@ function renderBalance(total, advance) {
     return '<span class="balance-positive">Rs. ' + balance.toLocaleString('en-IN') + '</span>';
 }
 
+async function clearAllData() {
+    if (await showConfirmDialog('Clear all guests, bookings, and checkouts?')) {
+        const batch1 = db.batch();
+        cachedGuests.forEach(g => batch1.delete(db.collection('guests').doc(g.id)));
+        await batch1.commit();
+
+        const batch2 = db.batch();
+        cachedBookings.forEach(b => batch2.delete(db.collection('bookings').doc(b.id)));
+        await batch2.commit();
+
+        const batch3 = db.batch();
+        cachedCheckouts.forEach(c => batch3.delete(db.collection('checkouts').doc(c.id)));
+        await batch3.commit();
+
+        cachedGuests = [];
+        cachedBookings = [];
+        cachedCheckouts = [];
+        await updateRoomStatusesFromBookings();
+        renderDashboard();
+        renderGuests();
+        renderBookings();
+        showToast('All test data cleared');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
     setupSidebarToggle();
