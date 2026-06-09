@@ -50,40 +50,6 @@ function renderBalance(total, advance) {
     return '<span class="balance-positive">Rs. ' + balance.toLocaleString('en-IN') + '</span>';
 }
 
-async function clearAllData() {
-    if (await showConfirmDialog('Clear all guests, bookings, and checkouts?')) {
-        try {
-            const deletions = [];
-
-            cachedGuests.forEach(g => {
-                deletions.push(db.collection('guests').doc(g.id).delete());
-            });
-
-            cachedBookings.forEach(b => {
-                deletions.push(db.collection('bookings').doc(b.id).delete());
-            });
-
-            cachedCheckouts.forEach(c => {
-                deletions.push(db.collection('checkouts').doc(c.id).delete());
-            });
-
-            await Promise.all(deletions);
-
-            cachedGuests = [];
-            cachedBookings = [];
-            cachedCheckouts = [];
-            await updateRoomStatusesFromBookings();
-            renderDashboard();
-            renderGuests();
-            renderBookings();
-            showToast('All test data cleared');
-        } catch (err) {
-            console.error('Clear error:', err);
-            showToast('Error clearing data', 'error');
-        }
-    }
-}
-
 document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
     setupSidebarToggle();
