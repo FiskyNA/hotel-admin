@@ -5,6 +5,51 @@ let currentDetailGuestId = null;
 let currentRoomId = null;
 let currentBookingFilter = 'all';
 
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+    }, 3000);
+}
+
+function showConfirmDialog(message) {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('confirmOverlay');
+        document.getElementById('confirmMessage').textContent = message;
+        overlay.classList.add('active');
+
+        const onOk = () => {
+            cleanup();
+            resolve(true);
+        };
+        const onCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+        const cleanup = () => {
+            overlay.classList.remove('active');
+            document.getElementById('confirmOk').removeEventListener('click', onOk);
+            document.getElementById('confirmCancel').removeEventListener('click', onCancel);
+        };
+
+        document.getElementById('confirmOk').addEventListener('click', onOk);
+        document.getElementById('confirmCancel').addEventListener('click', onCancel);
+    });
+}
+
+function renderBalance(total, advance) {
+    const paid = advance || 0;
+    const balance = total - paid;
+    if (balance <= 0) {
+        return '<span class="balance-zero">Paid</span>';
+    }
+    return '<span class="balance-positive">Rs. ' + balance.toLocaleString('en-IN') + '</span>';
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
     setupSidebarToggle();
@@ -149,8 +194,8 @@ function renderRecentBookings() {
                 <td><strong>${escapeHtml(b.reference || '-')}</strong></td>
                 <td>${names.map(n => escapeHtml(n)).join(', ')}</td>
                 <td>${room ? room.number : '-'}</td>
-                <td>${formatDisplayDate(b.checkIn)}</td>
-                <td>${formatDisplayDate(b.checkOut)}</td>
+                <td>${formatDisplayDate(b.checkIn)}${b.checkInTime ? ', ' + formatTime12(b.checkInTime) : ''}</td>
+                <td>${formatDisplayDate(b.checkOut)}${b.checkOutTime ? ', ' + formatTime12(b.checkOutTime) : ''}</td>
                 <td>-</td>
             </tr>
         `;
@@ -226,7 +271,7 @@ function renderBookings() {
 
     const tbody = document.getElementById('bookingsBody');
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-secondary);padding:20px;">No bookings found</td></tr>';
         return;
     }
 
@@ -242,9 +287,10 @@ function renderBookings() {
                 <td><strong>${escapeHtml(b.reference || '-')}</strong></td>
                 <td><div class="guest-tags">${names.map(n => `<span class="guest-tag">${escapeHtml(n)}</span>`).join('')}</div></td>
                 <td>${room ? room.number : '-'}</td>
-                <td>${formatDisplayDate(b.checkIn)}</td>
-                <td>${formatDisplayDate(b.checkOut)}</td>
+                <td>${formatDisplayDate(b.checkIn)}${b.checkInTime ? ', ' + formatTime12(b.checkInTime) : ''}</td>
+                <td>${formatDisplayDate(b.checkOut)}${b.checkOutTime ? ', ' + formatTime12(b.checkOutTime) : ''}</td>
                 <td>${b.totalPrice > 0 ? 'Rs. ' + b.totalPrice.toLocaleString('en-IN') : '-'}</td>
+                <td>${b.totalPrice > 0 ? renderBalance(b.totalPrice, b.advancePaid) : '-'}</td>
                 <td>
                     <button class="btn-icon" onclick="openBookingModal('${b.id}')" title="Edit">&#9998;</button>
                     <button class="btn-icon" onclick="deleteBooking('${b.id}')" title="Delete">&#128465;</button>
@@ -368,15 +414,18 @@ async function saveGuest(event) {
         createdAt: getGuestById(id)?.createdAt || new Date().toISOString()
     };
 
+    const isEdit = document.getElementById('guestId').value;
     await saveGuestData(guest);
+    showToast(isEdit ? 'Guest updated' : 'Guest added');
     closeGuestModal();
     renderGuests();
     renderDashboard();
 }
 
 async function deleteGuest(id) {
-    if (confirm('Are you sure you want to delete this guest?')) {
+    if (await showConfirmDialog('Are you sure you want to delete this guest?')) {
         await deleteGuestData(id);
+        showToast('Guest deleted');
         renderGuests();
         renderDashboard();
     }
@@ -398,13 +447,18 @@ async function saveBooking(event) {
         roomId: roomId,
         checkIn: checkIn,
         checkOut: checkOut,
+        checkInTime: document.getElementById('bookingCheckInTime').value || '14:00',
+        checkOutTime: document.getElementById('bookingCheckOutTime').value || '11:00',
         pricePerNight: parseFloat(document.getElementById('bookingPrice').value) || 0,
         totalPrice: parseFloat(document.getElementById('bookingTotal').value) || 0,
+        advancePaid: parseFloat(document.getElementById('bookingAdvance').value) || 0,
         createdAt: getBookingById(id)?.createdAt || new Date().toISOString()
     };
 
+    const isEdit = document.getElementById('bookingId').value;
     await saveBookingData(booking);
     await updateRoomStatusesFromBookings();
+    showToast(isEdit ? 'Booking updated' : 'Booking added');
     closeBookingModal();
     renderRoomGrid();
     renderBookings();
@@ -412,9 +466,10 @@ async function saveBooking(event) {
 }
 
 async function deleteBooking(id) {
-    if (confirm('Are you sure you want to delete this booking?')) {
+    if (await showConfirmDialog('Are you sure you want to delete this booking?')) {
         await deleteBookingData(id);
         await updateRoomStatusesFromBookings();
+        showToast('Booking deleted');
         renderRoomGrid();
         renderBookings();
         renderDashboard();
@@ -450,6 +505,7 @@ async function saveRoomStatus() {
     }
 
     await updateRoomStatus(currentRoomId, newStatus);
+    showToast('Room status updated');
     closeRoomModal();
     renderRoomGrid();
     renderTodayActivity();
@@ -540,6 +596,7 @@ async function openBookingModal(id) {
     document.getElementById('bookingId').value = '';
     document.getElementById('bookingPrice').value = '';
     document.getElementById('bookingTotal').value = '';
+    document.getElementById('bookingAdvance').value = '';
     document.getElementById('bookingGuestSearch').value = '';
     document.getElementById('bookingGuestFilter').value = 'never-booked';
     document.getElementById('autoTotal').checked = true;
@@ -563,8 +620,11 @@ async function openBookingModal(id) {
             document.getElementById('bookingRoom').value = booking.roomId;
             document.getElementById('bookingCheckIn').value = booking.checkIn;
             document.getElementById('bookingCheckOut').value = booking.checkOut;
+            document.getElementById('bookingCheckInTime').value = booking.checkInTime || '14:00';
+            document.getElementById('bookingCheckOutTime').value = booking.checkOutTime || '11:00';
             document.getElementById('bookingPrice').value = booking.pricePerNight || '';
             document.getElementById('bookingTotal').value = booking.totalPrice || '';
+            document.getElementById('bookingAdvance').value = booking.advancePaid || '';
         }
     } else {
         title.textContent = 'Add Booking';
@@ -729,11 +789,11 @@ function openRoomModal(roomId) {
                     </div>
                     <div class="room-booking-row">
                         <span class="room-booking-label">Check-in</span>
-                        <span>${formatDisplayDate(booking.checkIn)}</span>
+                        <span>${formatDisplayDate(booking.checkIn)}${booking.checkInTime ? ', ' + formatTime12(booking.checkInTime) : ''}</span>
                     </div>
                     <div class="room-booking-row">
                         <span class="room-booking-label">Check-out</span>
-                        <span>${formatDisplayDate(booking.checkOut)}</span>
+                        <span>${formatDisplayDate(booking.checkOut)}${booking.checkOutTime ? ', ' + formatTime12(booking.checkOutTime) : ''}</span>
                     </div>
                     <div class="room-booking-row">
                         <span class="room-booking-label">Reference</span>
@@ -789,6 +849,7 @@ async function checkoutRoom() {
     }
 
     await updateRoomStatus(currentRoomId, 'available');
+    showToast('Room checked out');
     closeRoomModal();
     renderRoomGrid();
     renderTodayActivity();

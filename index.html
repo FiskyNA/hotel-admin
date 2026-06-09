@@ -192,6 +192,7 @@
                                     <th>Check-in</th>
                                     <th>Check-out</th>
                                     <th>Total</th>
+                                    <th>Balance</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -334,10 +335,12 @@
                     <div class="form-group">
                         <label for="bookingCheckIn">Check-in</label>
                         <input type="date" id="bookingCheckIn" required onchange="calculateTotal()">
+                        <input type="time" id="bookingCheckInTime" value="14:00" style="margin-top:6px">
                     </div>
                     <div class="form-group">
                         <label for="bookingCheckOut">Check-out</label>
                         <input type="date" id="bookingCheckOut" required onchange="calculateTotal()">
+                        <input type="time" id="bookingCheckOutTime" value="11:00" style="margin-top:6px">
                     </div>
                 </div>
                 <div class="form-group">
@@ -349,6 +352,10 @@
                         </label>
                     </div>
                     <input type="number" id="bookingTotal" min="0" placeholder="Auto-calculated" oninput="onTotalManualEdit()">
+                </div>
+                <div class="form-group">
+                    <label for="bookingAdvance">Advance Paid (Rs.)</label>
+                    <input type="number" id="bookingAdvance" min="0" placeholder="0">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeBookingModal()">Cancel</button>
@@ -387,6 +394,20 @@
                     <button class="btn btn-secondary" onclick="closeRoomModal()">Cancel</button>
                     <button class="btn btn-primary" onclick="saveRoomStatus()">Save</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Confirm Dialog -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-dialog">
+            <p id="confirmMessage"></p>
+            <div class="confirm-actions">
+                <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+                <button class="btn btn-danger" id="confirmOk">Confirm</button>
             </div>
         </div>
     </div>

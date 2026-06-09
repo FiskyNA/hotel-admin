@@ -40,3 +40,12 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+function formatTime12(time24) {
+    if (!time24) return '';
+    const [h, m] = time24.split(':');
+    const hour = parseInt(h);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const h12 = hour % 12 || 12;
+    return h12 + ':' + m + ' ' + ampm;
+}
