@@ -120,30 +120,48 @@ function renderRecentBookings() {
 
 function renderGuests() {
     const guests = cachedGuests;
+    const bookings = cachedBookings;
     const search = document.getElementById('guestSearch').value.toLowerCase();
-    const filtered = guests.filter(g =>
-        g.name.toLowerCase().includes(search) ||
-        g.phone.includes(search) ||
-        (g.serialNo && g.serialNo.toLowerCase().includes(search))
-    );
+    const filter = document.getElementById('guestFilter').value;
+
+    const guestBookingCount = {};
+    bookings.forEach(b => {
+        const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
+        guestIds.forEach(gid => {
+            guestBookingCount[gid] = (guestBookingCount[gid] || 0) + 1;
+        });
+    });
+
+    let filtered = guests.filter(g => {
+        const matchesSearch = g.name.toLowerCase().includes(search) ||
+            g.phone.includes(search) ||
+            (g.serialNo && g.serialNo.toLowerCase().includes(search));
+        if (!matchesSearch) return false;
+        if (filter === 'never-booked') return !guestBookingCount[g.id];
+        return true;
+    });
 
     const tbody = document.getElementById('guestsBody');
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:20px;">No guests found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:20px;">No guests found</td></tr>';
         return;
     }
 
-    tbody.innerHTML = filtered.map(g => `
-        <tr>
-            <td><span class="clickable-name" onclick="openGuestDetailModal('${g.id}')">${escapeHtml(g.name)}</span></td>
-            <td>${escapeHtml(g.phone)}</td>
-            <td>${escapeHtml(g.serialNo || '-')}</td>
-            <td>
-                <button class="btn-icon" onclick="openGuestModal('${g.id}')" title="Edit">&#9998;</button>
-                <button class="btn-icon" onclick="deleteGuest('${g.id}')" title="Delete">&#128465;</button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = filtered.map(g => {
+        const count = guestBookingCount[g.id] || 0;
+        return `
+            <tr>
+                <td><span class="clickable-name" onclick="openGuestDetailModal('${g.id}')">${escapeHtml(g.name)}</span></td>
+                <td>${escapeHtml(g.phone)}</td>
+                <td>${escapeHtml(g.serialNo || '-')}</td>
+                <td>${count > 0 ? count : '-'}</td>
+                <td>
+                    <button class="btn-icon" onclick="openGuestModal('${g.id}')" title="Edit">&#9998;</button>
+                    <button class="btn-icon" onclick="deleteGuest('${g.id}')" title="Delete">&#128465;</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function filterGuests() {

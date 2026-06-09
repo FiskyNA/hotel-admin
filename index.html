@@ -131,6 +131,10 @@
                 <div class="card">
                     <div class="search-bar">
                         <input type="text" id="guestSearch" placeholder="Search guests..." oninput="filterGuests()">
+                        <select id="guestFilter" onchange="filterGuests()">
+                            <option value="never-booked">Never Booked</option>
+                            <option value="all">All Guests</option>
+                        </select>
                     </div>
                     <div class="table-wrapper">
                         <table class="table">
@@ -139,6 +143,7 @@
                                     <th>Name</th>
                                     <th>Phone</th>
                                     <th>Serial No</th>
+                                    <th>Bookings</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
