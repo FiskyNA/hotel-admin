@@ -3,6 +3,7 @@ let currentGuestAadharBack = null;
 let currentGuestSignature = null;
 let currentDetailGuestId = null;
 let currentRoomId = null;
+let currentBookingFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', async function() {
     setupNavigation();
@@ -94,11 +95,15 @@ function renderRecentBookings() {
     }
 
     tbody.innerHTML = recent.map(b => {
-        const guest = guests.find(g => g.id === b.guestId);
+        const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
+        const names = guestIds.map(gid => {
+            const g = guests.find(guest => guest.id === gid);
+            return g ? g.name : 'Unknown';
+        });
         const room = rooms.find(r => r.id === b.roomId);
         return `
             <tr>
-                <td>${escapeHtml(guest ? guest.name : 'Unknown')}</td>
+                <td>${names.map(n => escapeHtml(n)).join(', ')}</td>
                 <td>${room ? room.number : '-'}</td>
                 <td>${formatDisplayDate(b.checkIn)}</td>
                 <td>${formatDisplayDate(b.checkOut)}</td>
@@ -140,19 +145,40 @@ function filterGuests() {
     renderGuests();
 }
 
+function setBookingFilter(filter, btn) {
+    currentBookingFilter = filter;
+    document.querySelectorAll('.booking-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderBookings();
+}
+
 function renderBookings() {
     const bookings = cachedBookings;
     const guests = cachedGuests;
     const rooms = cachedRooms;
     const search = document.getElementById('bookingSearch').value.toLowerCase();
+    const today = getToday();
 
-    const filtered = bookings.filter(b => {
-        const guest = guests.find(g => g.id === b.guestId);
+    let filtered = bookings.filter(b => {
+        const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
+        const hasGuest = guestIds.some(gid => {
+            const g = guests.find(guest => guest.id === gid);
+            return g && g.name.toLowerCase().includes(search);
+        });
         const room = rooms.find(r => r.id === b.roomId);
-        return !search ||
-            (guest && guest.name.toLowerCase().includes(search)) ||
-            (room && room.number.includes(search));
+        const hasRoom = room && room.number.includes(search);
+        return !search || hasGuest || hasRoom;
     });
+
+    if (currentBookingFilter === 'upcoming') {
+        filtered = filtered.filter(b => b.checkIn > today);
+    } else if (currentBookingFilter === 'checked-in') {
+        filtered = filtered.filter(b => today >= b.checkIn && today <= b.checkOut);
+    } else if (currentBookingFilter === 'checked-out') {
+        filtered = filtered.filter(b => b.checkOut < today);
+    }
+
+    filtered.sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn));
 
     const tbody = document.getElementById('bookingsBody');
     if (filtered.length === 0) {
@@ -161,11 +187,15 @@ function renderBookings() {
     }
 
     tbody.innerHTML = filtered.map(b => {
-        const guest = guests.find(g => g.id === b.guestId);
+        const guestIds = b.guestIds || (b.guestId ? [b.guestId] : []);
+        const names = guestIds.map(gid => {
+            const g = guests.find(guest => guest.id === gid);
+            return g ? g.name : 'Unknown';
+        });
         const room = rooms.find(r => r.id === b.roomId);
         return `
             <tr>
-                <td>${escapeHtml(guest ? guest.name : 'Unknown')}</td>
+                <td><div class="guest-tags">${names.map(n => `<span class="guest-tag">${escapeHtml(n)}</span>`).join('')}</div></td>
                 <td>${room ? room.number : '-'}</td>
                 <td>${formatDisplayDate(b.checkIn)}</td>
                 <td>${formatDisplayDate(b.checkOut)}</td>
@@ -401,7 +431,11 @@ async function openBookingModal(id) {
         if (booking) {
             title.textContent = 'Edit Booking';
             document.getElementById('bookingId').value = booking.id;
-            document.getElementById('bookingGuest').value = booking.guestId;
+            const guestSelect = document.getElementById('bookingGuest');
+            const guestIds = booking.guestIds || (booking.guestId ? [booking.guestId] : []);
+            Array.from(guestSelect.options).forEach(opt => {
+                opt.selected = guestIds.includes(opt.value);
+            });
             document.getElementById('bookingRoom').value = booking.roomId;
             document.getElementById('bookingCheckIn').value = booking.checkIn;
             document.getElementById('bookingCheckOut').value = booking.checkOut;
@@ -422,8 +456,7 @@ function closeBookingModal() {
 function populateGuestDropdown() {
     const select = document.getElementById('bookingGuest');
     const guests = cachedGuests;
-    select.innerHTML = '<option value="">Select Guest</option>' +
-        guests.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
+    select.innerHTML = guests.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
 }
 
 function populateRoomDropdown() {
@@ -463,10 +496,12 @@ async function saveBooking(event) {
     const roomId = document.getElementById('bookingRoom').value;
     const checkIn = document.getElementById('bookingCheckIn').value;
     const checkOut = document.getElementById('bookingCheckOut').value;
+    const guestSelect = document.getElementById('bookingGuest');
+    const guestIds = Array.from(guestSelect.selectedOptions).map(opt => opt.value);
 
     const booking = {
         id: id,
-        guestId: document.getElementById('bookingGuest').value,
+        guestIds: guestIds,
         roomId: roomId,
         checkIn: checkIn,
         checkOut: checkOut,

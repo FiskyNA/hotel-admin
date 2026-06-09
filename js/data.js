@@ -123,6 +123,13 @@ async function getActiveBookings() {
     );
 }
 
+function getBookingStatus(b) {
+    const today = getToday();
+    if (b.checkIn > today) return 'upcoming';
+    if (b.checkOut < today) return 'checked-out';
+    return 'checked-in';
+}
+
 async function isRoomAvailable(roomId, checkIn, checkOut, excludeBookingId) {
     const bookings = await getBookings();
     return !bookings.some(b =>

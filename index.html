@@ -158,6 +158,13 @@
                     <button class="btn btn-primary" onclick="openBookingModal()">+ Add Booking</button>
                 </div>
 
+                <div class="booking-tabs">
+                    <button class="booking-tab active" data-filter="all" onclick="setBookingFilter('all', this)">All</button>
+                    <button class="booking-tab" data-filter="upcoming" onclick="setBookingFilter('upcoming', this)">Upcoming</button>
+                    <button class="booking-tab" data-filter="checked-in" onclick="setBookingFilter('checked-in', this)">Checked-In</button>
+                    <button class="booking-tab" data-filter="checked-out" onclick="setBookingFilter('checked-out', this)">Checked-Out</button>
+                </div>
+
                 <div class="card">
                     <div class="search-bar">
                         <input type="text" id="bookingSearch" placeholder="Search bookings..." oninput="filterBookings()">
@@ -166,7 +173,7 @@
                         <table class="table">
                             <thead>
                                 <tr>
-                                    <th>Guest</th>
+                                    <th>Guest(s)</th>
                                     <th>Room</th>
                                     <th>Check-in</th>
                                     <th>Check-out</th>
@@ -280,10 +287,8 @@
             <form id="bookingForm" onsubmit="saveBooking(event)">
                 <input type="hidden" id="bookingId">
                 <div class="form-group">
-                    <label for="bookingGuest">Guest</label>
-                    <select id="bookingGuest" required>
-                        <option value="">Select Guest</option>
-                    </select>
+                    <label for="bookingGuest">Guest(s) - Hold Ctrl/Cmd to select multiple</label>
+                    <select id="bookingGuest" required multiple size="4"></select>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
